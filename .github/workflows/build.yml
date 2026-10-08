@@ -22,8 +22,16 @@ jobs:
       - name: Descomprimir y compilar
         run: |
           ZIP=$(ls *.zip 2>/dev/null | head -1)
-          if [ -n "$ZIP" ]; then unzip -o -q "$ZIP"; fi
-          DIR=$(dirname "$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)")
+          rm -rf _proyecto && mkdir _proyecto
+          if [ -n "$ZIP" ]; then unzip -o -q "$ZIP" -d _proyecto; fi
+          # Busco el proyecto que de verdad tiene la carpeta app completa
+          DIR=""
+          for f in $(find _proyecto . -name settings.gradle.kts -not -path './.git/*'); do
+            d=$(dirname "$f")
+            if [ -f "$d/app/build.gradle.kts" ] && [ -f "$d/app/src/main/AndroidManifest.xml" ]; then DIR="$d"; break; fi
+          done
+          if [ -z "$DIR" ]; then echo "No encuentro el proyecto completo. Contenido:"; find . -not -path './.git/*' | head -80; exit 1; fi
+          echo "Compilando en: $DIR"
           cd "$DIR"
           gradle assembleDebug --no-daemon
           cp "$(find . -name app-debug.apk | head -1)" "$GITHUB_WORKSPACE/LB-Watchlist.apk"
